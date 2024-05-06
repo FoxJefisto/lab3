@@ -13,7 +13,7 @@ int** StrassenImp(int n, int** matrix1, int** matrix2);
 
 int** CreateMatrix(int n);
 
-void FillMatrix(int n, int**& matrix);
+void FillMatrix(int n, int value, int**& matrix);
 
 void DeleteMatrix(int n, int** matrix);
 
@@ -54,8 +54,8 @@ int main(int argc, char* argv[])
 
     if (rank == 0)
     {
-        FillMatrix(n, matrix1);
-        FillMatrix(n, matrix2);
+        FillMatrix(n, 5, matrix1);
+        FillMatrix(n, 2, matrix2);
     }
 
     MPI_Bcast(&(matrix1[0][0]), n * n, MPI_INT, 0, MPI_COMM_WORLD);
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 
     if (rank == 0)
     {
-        PrintMatrix(n, result);
+        // PrintMatrix(n, result);
         cout << "Thread size: " << size << "\nParallel Strassen Runtime (MPI): "
         << setprecision(5) << endTime - startTime << endl;
     }
@@ -334,7 +334,7 @@ int** CreateMatrix(int n)
     return array;
 }
 
-void FillMatrix(int n, int**& matrix)
+void FillMatrix(int n, int value, int**& matrix)
 {
     for (int i = 0; i < n; i++)
     {
