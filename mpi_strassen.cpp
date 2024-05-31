@@ -7,13 +7,13 @@
 
 using namespace std;
 
-int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int size);
+int** Strassen(int n, int** matrix1, int** matrix2, int rank, int size);
 
 int** StrassenImp(int n, int** matrix1, int** matrix2);
 
 int** CreateMatrix(int n);
 
-void FillMatrix(int n, int value, int**& matrix);
+void FillMatrix(int n, int value, int** matrix);
 
 void DeleteMatrix(int n, int** matrix);
 
@@ -58,8 +58,8 @@ int main(int argc, char* argv[])
         FillMatrix(n, 2, matrix2);
     }
 
-    MPI_Bcast(&(matrix1[0][0]), n * n, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&(matrix2[0][0]), n * n, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(matrix1[0], n * n, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(matrix2[0], n * n, MPI_INT, 0, MPI_COMM_WORLD);
 
     double startTime = MPI_Wtime();
 
@@ -67,13 +67,13 @@ int main(int argc, char* argv[])
     if(size == 1)
         result = StrassenImp(n, matrix1, matrix2);
     else
-        result = Strassen(n, matrix1, matrix2, result, rank, size);
+        result = Strassen(n, matrix1, matrix2, rank, size);
 
     double endTime = MPI_Wtime();
 
     if (rank == 0)
     {
-        // PrintMatrix(n, result);
+        PrintMatrix(n, result);
         cout << "Thread size: " << size << "\nParallel Strassen Runtime (MPI): "
         << setprecision(5) << endTime - startTime << endl;
     }
@@ -83,12 +83,14 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int size)
+int** Strassen(int n, int** matrix1, int** matrix2, int rank, int size)
 {
+    int** result;
     if (n == 1)
     {
         result = CreateMatrix(1);
         result[0][0] = matrix1[0][0] * matrix2[0][0];
+        return result;
     }
 
     int m = n / 2;
@@ -119,7 +121,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         for(int** s : {s1, s2, s3, s4, s5, s6, s7})
         {
             i = i % size1 + 1;
-            MPI_Recv(&(s[0][0]), m * m, MPI_INT, i, j, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(s[0], m * m, MPI_INT, i, j, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             j++;
         }
     }
@@ -131,7 +133,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         s1 = StrassenImp(m, bds, gha);
         DeleteMatrix(m, bds);
         DeleteMatrix(m, gha);
-        MPI_Send(&(s1[0][0]), m * m, MPI_INT, 0, 1, MPI_COMM_WORLD);
+        MPI_Send(s1[0], m * m, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
 
     if (rank == (1 % size1 + 1))
@@ -141,7 +143,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         s2 = StrassenImp(m, ada, eha);
         DeleteMatrix(m, ada);
         DeleteMatrix(m, eha);
-        MPI_Send(&(s2[0][0]), m * m, MPI_INT, 0, 2, MPI_COMM_WORLD);
+        MPI_Send(s2[0], m * m, MPI_INT, 0, 2, MPI_COMM_WORLD);
     }
 
     if (rank == (2 % size1 + 1))
@@ -151,7 +153,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         s3 = StrassenImp(m, acs, efa);
         DeleteMatrix(m, acs);
         DeleteMatrix(m, efa);
-        MPI_Send(&(s3[0][0]), m * m, MPI_INT, 0, 3, MPI_COMM_WORLD);
+        MPI_Send(s3[0], m * m, MPI_INT, 0, 3, MPI_COMM_WORLD);
     }
 
     if (rank == (3 % size1 + 1))
@@ -159,7 +161,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         int** aba = SumMatrix(m, a, b);
         s4 = StrassenImp(m, aba, h);
         DeleteMatrix(m, aba);
-        MPI_Send(&(s4[0][0]), m * m, MPI_INT, 0, 4, MPI_COMM_WORLD);
+        MPI_Send(s4[0], m * m, MPI_INT, 0, 4, MPI_COMM_WORLD);
     }
     DeleteMatrix(m, b);
 
@@ -168,7 +170,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         int** fhs = SubMatrix(m, f, h);
         s5 = StrassenImp(m, a, fhs);
         DeleteMatrix(m, fhs);
-        MPI_Send(&(s5[0][0]), m * m, MPI_INT, 0, 5, MPI_COMM_WORLD);
+        MPI_Send(s5[0], m * m, MPI_INT, 0, 5, MPI_COMM_WORLD);
     }
     DeleteMatrix(m, a);
     DeleteMatrix(m, f);
@@ -179,7 +181,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         int** ges = SubMatrix(m, g, e);
         s6 = StrassenImp(m, d, ges);
         DeleteMatrix(m, ges);
-        MPI_Send(&(s6[0][0]), m * m, MPI_INT, 0, 6, MPI_COMM_WORLD);
+        MPI_Send(s6[0], m * m, MPI_INT, 0, 6, MPI_COMM_WORLD);
     }
     DeleteMatrix(m, g);
 
@@ -188,7 +190,7 @@ int** Strassen(int n, int** matrix1, int** matrix2, int**& result, int rank, int
         int** cda = SumMatrix(m, c, d);
         s7 = StrassenImp(m, cda, e);
         DeleteMatrix(m, cda);
-        MPI_Send(&(s7[0][0]), m * m, MPI_INT, 0, 7, MPI_COMM_WORLD);
+        MPI_Send(s7[0], m * m, MPI_INT, 0, 7, MPI_COMM_WORLD);
     }
     DeleteMatrix(m, c);
     DeleteMatrix(m, d);
@@ -325,16 +327,16 @@ int** StrassenImp(int n, int** matrix1, int** matrix2)
 
 int** CreateMatrix(int n)
 {
-    int* data = (int*)malloc(n * n * sizeof(int));
-    int** array = (int**)malloc(n * sizeof(int*));
+    int* data = new int[n*n];
+    int** array = new int*[n];
     for (int i = 0; i < n; i++)
     {
-        array[i] = &(data[n * i]);
+        array[i] = &data[n * i];
     }
     return array;
 }
 
-void FillMatrix(int n, int value, int**& matrix)
+void FillMatrix(int n, int value, int** matrix)
 {
     for (int i = 0; i < n; i++)
     {
@@ -347,8 +349,8 @@ void FillMatrix(int n, int value, int**& matrix)
 
 void DeleteMatrix(int n, int** matrix)
 {
-    free(matrix[0]);
-    free(matrix);
+    delete[] matrix[0];
+    delete[] matrix;
 }
 
 int** SliceMatrix(int n, int** matrix, int offseti, int offsetj)
